@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1624">
+<title>Analog + Digital Watch</title>
+<style>
+:root{--bg:#eef1f4;--face:#fff;--ink:#14213d;--mut:#5b6678;--line:#c9d1dc;--acc:#d32f2f;--key:#14213d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b111d;--face:#141d31;--ink:#e8edf6;--mut:#9aa6bb;--line:#2b3753;--acc:#ff6b6b;--key:#e8edf6}}
+:root[data-theme="dark"]{--bg:#0b111d;--face:#141d31;--ink:#e8edf6;--mut:#9aa6bb;--line:#2b3753;--acc:#ff6b6b;--key:#e8edf6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px;-webkit-tap-highlight-color:transparent}
+svg{width:min(88vw,52vh,420px);height:auto;filter:drop-shadow(0 6px 18px rgba(0,0,0,.25))}
+.digital{text-align:center}
+#time{font-size:clamp(40px,14vw,76px);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:1px;line-height:1}
+#ampm{font-size:.32em;color:var(--mut);margin-left:6px;letter-spacing:0}
+#date{margin-top:8px;font-size:clamp(15px,4.6vw,22px);color:var(--mut)}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+button{font:inherit;font-size:15px;font-weight:700;border:2px solid var(--line);background:none;color:var(--ink);border-radius:12px;padding:10px 16px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+</style></head><body>
+<svg viewBox="0 0 200 200" role="img" aria-label="Analog clock face" id="dial">
+<circle cx="100" cy="100" r="97" fill="var(--face)" stroke="var(--line)" stroke-width="3"/>
+<g id="ticks"></g><g id="nums" font-size="14" font-weight="700" text-anchor="middle" fill="var(--ink)" font-family="system-ui,sans-serif"></g>
+<text x="100" y="140" text-anchor="middle" font-size="9" fill="var(--mut)" font-family="system-ui,sans-serif" letter-spacing="2" id="wd"></text>
+<line id="hh" x1="100" y1="100" x2="100" y2="58" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>
+<line id="mh" x1="100" y1="100" x2="100" y2="34" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/>
+<line id="sh" x1="100" y1="112" x2="100" y2="24" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round"/>
+<circle cx="100" cy="100" r="5" fill="var(--acc)"/><circle cx="100" cy="100" r="2" fill="var(--face)"/>
+</svg>
+<div class="digital"><div><span id="time">--:--:--</span><span id="ampm"></span></div><div id="date"></div></div>
+<div class="row">
+<button id="b24" aria-pressed="false">24-hour</button>
+<button id="bth">Theme: Auto</button>
+<button id="bwl" aria-pressed="false">Keep screen on</button>
+<button id="bfs">Full screen</button>
+</div>
+<script>
+const $=s=>document.querySelector(s),NS='http://www.w3.org/2000/svg';
+const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+// dial
+let t='';for(let i=0;i<60;i++){const a=i*6*Math.PI/180,big=i%5===0,r1=big?84:89,r2=94;
+t+=`<line x1="${100+r1*Math.sin(a)}" y1="${100-r1*Math.cos(a)}" x2="${100+r2*Math.sin(a)}" y2="${100-r2*Math.cos(a)}" stroke="${big?'var(--ink)':'var(--line)'}" stroke-width="${big?2.4:1}"/>`}
+$('#ticks').innerHTML=t;
+let n='';for(let i=1;i<=12;i++){const a=i*30*Math.PI/180;n+=`<text x="${100+68*Math.sin(a)}" y="${100-68*Math.cos(a)+5}">${i}</text>`}
+$('#nums').innerHTML=n;
+// settings
+let h24=store.get('h24')==='1',theme=store.get('theme')||'auto';
+const root=document.documentElement;
+function applyTheme(){theme==='auto'?root.removeAttribute('data-theme'):root.dataset.theme=theme;$('#bth').textContent='Theme: '+theme[0].toUpperCase()+theme.slice(1)}
+$('#bth').onclick=()=>{theme={auto:'dark',dark:'light',light:'auto'}[theme];store.set('theme',theme);applyTheme()};
+$('#b24').onclick=()=>{h24=!h24;store.set('h24',h24?'1':'0');last=-1;sync()};
+function sync(){$('#b24').setAttribute('aria-pressed',h24);$('#b24').textContent=h24?'24-hour':'12-hour'}
+// wake lock
+let lock=null,want=false;
+async function getLock(){try{lock=await navigator.wakeLock.request('screen');lock.addEventListener('release',()=>{lock=null})}catch(e){want=false;$('#bwl').setAttribute('aria-pressed',false)}}
+if('wakeLock' in navigator){$('#bwl').onclick=async()=>{want=!want;$('#bwl').setAttribute('aria-pressed',want);if(want)await getLock();else if(lock){lock.release();lock=null}};
+document.addEventListener('visibilitychange',()=>{if(want&&!lock&&document.visibilityState==='visible')getLock()})}else $('#bwl').hidden=true;
+if(document.documentElement.requestFullscreen){$('#bfs').onclick=()=>{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}}else $('#bfs').hidden=true;
+// clock
+const p=v=>String(v).padStart(2,'0');let last=-1;
+const rot=(id,deg)=>$(id).setAttribute('transform',`rotate(${deg} 100 100)`);
+function tick(){const d=new Date(),s=d.getSeconds()+d.getMilliseconds()/1000,m=d.getMinutes()+s/60,h=d.getHours()%12+m/60;
+rot('#sh',s*6);rot('#mh',m*6);rot('#hh',h*30);
+const sec=d.getSeconds();if(sec!==last){last=sec;const H=d.getHours();
+$('#time').textContent=(h24?p(H):String(H%12||12))+':'+p(d.getMinutes())+':'+p(sec);
+$('#ampm').textContent=h24?'':(H<12?'AM':'PM');
+$('#date').textContent=d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+$('#wd').textContent=d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()+' '+d.getDate();
+$('#dial').setAttribute('aria-label','Analog clock, '+$('#time').textContent+$('#ampm').textContent)}
+requestAnimationFrame(tick)}
+applyTheme();sync();tick();
+</script></body></html>
