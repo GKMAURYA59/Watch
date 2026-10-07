@@ -31,6 +31,7 @@ Run locally
 There is nothing to install and no internet connection is needed. Download index.html and open it in any modern browser.
 
 Notes
+
 Keep screen on and Full screen depend on browser support. If a button is missing, your browser does not support that feature.
 The time follows your device's clock and time zone.
 
