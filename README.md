@@ -2,7 +2,7 @@ Analog + Digital Watch
 
 A watch web app that shows the time on an analog dial and a large digital readout at the same time. It is built for phones (including Android) and is a single HTML file with no installation needed.
 
-Live demo: https://gkmaurya59.github.io/watch/
+Live demo: https://gkmaurya59.github.io/Watch/
 
 Features
 Analog dial with a smooth sweeping second hand, hour and minute hands, and the weekday and date inside the dial
